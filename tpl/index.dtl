@@ -1,0 +1,46 @@
+{% extends "layout.dtl" %}
+
+{% block content %}
+<h1>Accounts</h1>
+
+<h3>Add new account</h3>
+<form method="post" action="/accounts">
+<p>Balance:<input type="number" name="balance"></p>
+<p><input type="submit" name="balance" value="Add"></p>
+</form>
+
+
+<h3>List of accounts</h3>
+<table border="1">
+<thead>
+<tr>
+    <th>
+        AccountID
+    </th>
+    <th>
+        Balance
+    </th>
+    <th>
+        Action
+    </th>
+</tr>
+</thead>
+<tbody>
+{% for account,bal in accounts %}
+<tr>
+    <td>
+    {{account}}
+    </td>
+    <td>
+        {{bal}}
+    </td>
+    <td>
+        <a href="/accounts/{{o}}">history</a>
+        <a href="/accounts/{{o}}/remove" style="color:red;">remove</a>
+    </td>
+</tr>
+{% endfor %}
+</tbody>
+</table>
+
+{% endblock %}
