@@ -18,13 +18,21 @@
   handle_cast/2,
   handle_info/2,
   terminate/2,
+  uniq_id/0,
+  time_millis/0,
   code_change/3]).
 
 -export([create_account/1,
   delete_account/1,
   deposit_amount/2,
+  find_account/1,
+  find_accounts/0,
   with_draw_amount/2]).
 
+-include("include/models.hrl").
+
+find_account(AccountId) -> gen_server:call(?MODULE, {find, AccountId}).
+find_accounts() -> gen_server:call(?MODULE, {findAll}).
 create_account(InitialBalance) -> gen_server:call(?MODULE, {create, InitialBalance}).
 delete_account(AccountId) -> gen_server:call(?MODULE, {delete, AccountId}).
 deposit_amount(AccountId, Amount) -> gen_server:call(?MODULE, {deposite, AccountId, Amount}).
@@ -89,21 +97,56 @@ init([]) ->
   {stop, Reason :: term(), Reply :: term(), NewState :: #state{}} |
   {stop, Reason :: term(), NewState :: #state{}}).
 
+handle_call({find, AccountId}, _From, Tab) ->
+  History = mnesia:transaction(fun() -> mnesia:read({history, AccountId}) end),
+  {reply, History, Tab};
+
+handle_call({findAll}, _From, Tab) ->
+  CatchAll = [{'_', [], ['$_']}],
+  Accounts = mnesia:transaction(fun() -> mnesia:select(account, CatchAll) end),
+  {reply, Accounts, Tab};
+
 handle_call({create, InitialBalance}, _From, Tab) ->
-  Reply =1,
-  {reply, Reply, Tab};
+  case is_number(InitialBalance) of
+    false -> {reply, {false, wrong_amount}, Tab};
+    true ->
+      UniqId = uniq_id(),
+      AccountRecord = #account{accountId = UniqId, balance = InitialBalance},
+      HistoryRecord = #history{accountId = UniqId, money = InitialBalance, type = start, time = time_millis()},
+      {atomic, Result} =mnesia:transaction(
+        fun() ->
+          mnesia:write(AccountRecord),
+          mnesia:write(HistoryRecord),
+          UniqId
+        end
+      ),
+      {reply, Result, Tab}
+  end;
+
 
 handle_call({delete, AccountId}, _From, Tab) ->
-  Reply =2,
-  {reply, Reply, Tab};
+  {atomic, Result}=mnesia:transaction(
+    fun() ->
+      mnesia:delete({account, AccountId}),
+      mnesia:delete({history, AccountId}),
+      ok
+    end
+  ),
+  {reply, Result, Tab};
 
 handle_call({deposite, AccountId, Amount}, _From, Tab) ->
-  Reply =3,
-  {reply, Reply, Tab};
+  {atomic, Result} = case (Amount =< 0) or (is_number(Amount) =:= false) of
+             true -> {reply, {false, wrong_amount}, Tab};
+             false -> insert_history(AccountId, Amount, deposite)
+           end,
+  {reply, Result, Tab};
 
 handle_call({draw, AccountId, Amount}, _From, Tab) ->
-  Reply =4,
-  {reply, Reply, Tab}.
+  {atomic, Result} = case (Amount >= 0) or (is_number(Amount) =:= false) of
+             true -> {false, wrong_amount};
+             false -> insert_history(AccountId, Amount, draw)
+           end,
+  {reply, Result, Tab}.
 
 
 %%--------------------------------------------------------------------
@@ -170,3 +213,33 @@ code_change(_OldVsn, State, _Extra) ->
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
+
+
+insert_history(AccountId, Amount, Type) ->
+  mnesia:transaction(
+    fun() ->
+      case (mnesia:read({account, AccountId})) of
+        [] -> {false, invalid_account};
+        Array ->
+          [{_type, AccountId, Balance}] = Array,
+          NewBalance = Balance + Amount,
+          AccountRecord = #account{accountId = AccountId, balance = NewBalance},
+          HistoryRecord = #history{
+            accountId = AccountId,
+            money = Amount,
+            type = Type,
+            time = time_millis()
+          },
+          mnesia:write(AccountRecord),
+          mnesia:write(HistoryRecord)
+      end
+    end
+  ).
+
+
+time_millis() ->
+  {MegaSecs, Secs, MicroSecs} = os:timestamp(),
+  (MegaSecs * 1000000 + Secs) * 1000 + erlang:trunc(MicroSecs / 1000).
+
+uniq_id() ->
+  time_millis() * 100 + random:uniform(99).

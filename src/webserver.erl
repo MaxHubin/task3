@@ -6,14 +6,19 @@
   stop/0
 ]).
 
--define(APPS, [crypto, ranch, cowlib, cowboy,mnesia, webserver]).
+-define(APPS, [crypto, ranch, cowlib, cowboy,mnesia,jiffy, webserver]).
+-include("include/models.hrl").
 
 %% ===================================================================
 %% API functions
 %% ===================================================================
 
 start() ->
-  ok = ensure_started(?APPS).
+  mnesia:create_schema([node()]),
+  mnesia:start(),
+  ok = ensure_started(?APPS),
+  mnesia:create_table(account,   [{attributes, record_info(fields, account)}, {disc_copies, [node()] },{type, set}]),
+  mnesia:create_table(history,   [{attributes, record_info(fields, history)}, {disc_copies, [node()] },{type, bag}]).
 
 stop() ->
   ok = stop_apps(lists:reverse(?APPS)).

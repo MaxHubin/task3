@@ -15,6 +15,5 @@
 ]).
 
 init(Req, _Opts) ->
-  {ok, HTML} = index_tpl:render([{accounts, [[1,2],[3,4],[5,6],[7,8]]}]),
-  {ok, Req2} = cowboy_req:reply(200, [], HTML, Req),
+  {ok, Req2} = cowboy_req:reply(200, [], "index", Req),
   {ok, Req2, {}}.

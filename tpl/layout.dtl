@@ -1,9 +1,0 @@
-<html>
-<head>
-	<title>Task #3 My bank</title>
-</head>
-
-<body>
-{% block content %}{% endblock %}
-</body>
-</html>

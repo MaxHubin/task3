@@ -1,5 +1,0 @@
-{% extends "layout.dtl" %}
-
-{% block content %}
-<h1>Hello, {{ username | default : "stranger" }}!</h1>
-{% endblock %}
