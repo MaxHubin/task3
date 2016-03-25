@@ -1,0 +1,12 @@
+{% extends "layout.dtl" %}
+
+{% block content %}
+<h1>EndPoints</h1>
+<ul>
+<li>Post /accounts  (  {"InitialBalance":int} )</li>
+<li>Put /accounts/:id  (  {"Money":int} )</li>
+<li>Get /accounts/:id  </li>
+<li>Get /accounts  </li>
+<li>Delete /accounts/:id  </li>
+</ul>
+{% endblock %}

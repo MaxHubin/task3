@@ -15,5 +15,7 @@
 ]).
 
 init(Req, _Opts) ->
-  {ok, Req2} = cowboy_req:reply(400, [], "ERROR", Req),
+  URL = cowboy_req:url(Req),
+  {ok, HTML} = '404_tpl':render([{url, URL}]),
+  {ok, Req2} = cowboy_req:reply(404, [], HTML, Req),
   {ok, Req2, {}}.
