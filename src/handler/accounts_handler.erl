@@ -51,7 +51,7 @@ resource_exists(Req, _State) ->
   case cowboy_req:binding(accountid, Req) of
     {undefined, Req2} ->
       {true, Req2, index};
-    {AccountId, Req2} ->
+    {AccountId, _Req2} ->
       case bank:find_account(AccountId) of
         {atomic, []} -> {false, Req, []};
         {atomic, History} -> {true, Req, History}
