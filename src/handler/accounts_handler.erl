@@ -49,7 +49,7 @@ resource_exists(Req, _State) ->
       {true, Req, index};
     AccountId ->
       case bank:find_account(AccountId) of
-        {atomic, []} -> {false, Req, index};
+        {atomic, []} -> {false, Req, []};
         {atomic, History} -> {true, Req, History}
       end
   end.
@@ -100,21 +100,19 @@ in_put(ReqBody, AccountId) ->
 
 handle_req(Req, index) ->
   {atomic, Accounts} = bank:find_accounts(),
-  Req2 = cowboy_req:set_resp_body(jiffy:encode(
+  Body = jiffy:encode(
     [[AccountId, Balance] || {_Type, AccountId, Balance} <- Accounts]
-  ), Req),
-  %%TODO ERROR ?
-  {ok, cowboy_req:reply(200, Req2), index};
+  ),
+  {Body, Req, index};
 
 handle_req(Req, []) ->
   invalid_account(Req, []);
 
 handle_req(Req, History) ->
-  Req2 = cowboy_req:set_resp_body(jiffy:encode(
+  Body = jiffy:encode(
     [[TypeTransaction, Money, Timestamp] || {_Type, _AccountId, Money, TypeTransaction, Timestamp} <- History]
-  ), Req),
-%%TODO ERROR ?
-  {ok, cowboy_req:reply(200, Req2), History}.
+  ),
+  {Body,  Req, History}.
 
 
 wrong_amount(Req, State) ->

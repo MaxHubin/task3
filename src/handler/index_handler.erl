@@ -16,5 +16,4 @@
 
 init(Req, _Opts) ->
   {ok, HTML} = index_tpl:render([]),
-  {ok, Req2} = cowboy_req:reply(200, [], HTML, Req),
-  {ok, Req2, {}}.
+  {ok, cowboy_req:reply(200, [], HTML, Req), {}}.
