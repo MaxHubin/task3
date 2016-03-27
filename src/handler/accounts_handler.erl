@@ -10,7 +10,9 @@
 -author("maxsim").
 
 %% API
--export([init/2]).
+-export([init/3]).
+-export([rest_init/2]).
+-export([rest_terminate/2]).
 -export([content_types_provided/2]).
 -export([allowed_methods/2]).
 -export([handle_req/2]).
@@ -26,9 +28,11 @@
 -define(INSUFFICIENT_FUNDS, "\"INSUFFICIENT_FUNDS\"").
 -define(INTERNAL_ERROR, "\"INTERNAL_ERROR\"").
 
+init({tcp, http}, _Req, _Opts) ->
+  {upgrade, protocol, cowboy_rest}.
 
-init(Req, Opts) ->
-  {cowboy_rest, Req, Opts}.
+rest_init(Req, Opts) ->
+  {ok, Req, Opts}.
 
 allowed_methods(Req, State) ->
   {[<<"GET">>, <<"POST">>, <<"PUT">>, <<"DELETE">>], Req, State}.
@@ -45,9 +49,9 @@ content_types_accepted(Req, State) ->
 
 resource_exists(Req, _State) ->
   case cowboy_req:binding(accountid, Req) of
-    undefined ->
-      {true, Req, index};
-    AccountId ->
+    {undefined, Req2} ->
+      {true, Req2, index};
+    {AccountId, Req2} ->
       case bank:find_account(AccountId) of
         {atomic, []} -> {false, Req, []};
         {atomic, History} -> {true, Req, History}
@@ -61,7 +65,8 @@ delete_resource(Req, []) ->
   invalid_account(Req, []);
 
 delete_resource(Req, _Array) ->
-  bank:delete_account(cowboy_req:binding(accountid, Req)),
+  {AccountId,_Req}=cowboy_req:binding(accountid, Req),
+  bank:delete_account(AccountId),
   {true, Req, _Array}.
 
 
@@ -69,8 +74,10 @@ delete_resource(Req, _Array) ->
 handle_in(Req, State) ->
   {ok, ReqBody, _Req3} = cowboy_req:body(Req),
   Answer = case cowboy_req:method(Req) of
-             <<"POST">> -> in_post(ReqBody);
-             <<"PUT">> -> in_put(ReqBody, cowboy_req:binding(accountid, Req))
+             {<<"POST">>,_Req} -> in_post(ReqBody);
+             {<<"PUT">>,_Req} ->
+               {AccountId,_Req}=cowboy_req:binding(accountid, Req),
+               in_put(ReqBody, AccountId)
            end,
   case Answer of
     {false, wrong_amount} ->
@@ -112,7 +119,7 @@ handle_req(Req, History) ->
   Body = jiffy:encode(
     [[TypeTransaction, Money, Timestamp] || {_Type, _AccountId, Money, TypeTransaction, Timestamp} <- History]
   ),
-  {Body,  Req, History}.
+  {Body, Req, History}.
 
 
 wrong_amount(Req, State) ->
@@ -122,3 +129,6 @@ wrong_amount(Req, State) ->
 invalid_account(Req, State) ->
   Req2 = cowboy_req:set_resp_body(["{\"code\": ", ?INVALID_ACCOUNT, "}"], Req),
   {false, Req2, State}.
+
+rest_terminate(_Req, _State) ->
+  ok.

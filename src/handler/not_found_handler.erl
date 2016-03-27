@@ -11,10 +11,21 @@
 
 %% API
 -export([
-  init/2
+  init/3,
+  terminate/3,
+  handle/2
 ]).
 
-init(Req, _Opts) ->
-  URL = cowboy_req:url(Req),
+
+init(_Type, Req, _Opts) ->
+  {ok, Req, {}}.
+
+handle(Req, State) ->
+  URL = element(1, cowboy_req:url(Req)),
   {ok, HTML} = '404_tpl':render([{url, URL}]),
-  {ok, cowboy_req:reply(404, [], HTML, Req), {}}.
+  {ok, Req2} = cowboy_req:reply(200, [], HTML, Req),
+  {ok, Req2, State}.
+
+
+terminate(_Reason, _Req, _State) ->
+  ok.

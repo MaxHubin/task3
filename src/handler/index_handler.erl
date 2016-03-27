@@ -11,9 +11,18 @@
 
 %% API
 -export([
-  init/2
+  init/3,
+  terminate/3,
+  handle/2
 ]).
 
-init(Req, _Opts) ->
+init(_Type, Req, _Opts) ->
+  {ok, Req, {}}.
+
+handle(Req, State) ->
   {ok, HTML} = index_tpl:render([]),
-  {ok, cowboy_req:reply(200, [], HTML, Req), {}}.
+  {ok, Req2} = cowboy_req:reply(200, [], HTML, Req),
+  {ok, Req2, State}.
+
+terminate(_Reason, _Req, _State) ->
+  ok.
